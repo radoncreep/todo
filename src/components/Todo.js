@@ -14,7 +14,8 @@ const Todo = () => {
 
     const todoAddHandler = () => {
         // take the previous value in the state into account
-        setTodoList()
+        // concat always returns a new array and doesnt edit the old one
+        setTodoList(todoList.concat(todoName));
     }
 
     return (
@@ -25,9 +26,14 @@ const Todo = () => {
             onChange={inputChangeHandler}
             value={todoName}
             /> 
-          <button type="button">Add</button>
+          <button 
+            type="button"
+            onClick={todoAddHandler}
+            >Add</button>
           <ul>
-
+            {todoList.map(todo => (
+                <li key={todo}>{todo}</li>
+            ))}
           </ul>
         </>
     )
