@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import axios from 'axios';
+import { bindActionCreators } from 'redux';
+// import userEvent from '@testing-library/user-event';
 const Todo = () => {
     // single state
     // todoState is an object containing a string and array property
     const [todoName, setTodoName] = useState('');
+    const [submittedTodo, setSubmittedTodo] = useState(null);
     const [todoList, setTodoList] = useState([]);
 
     useEffect(() => {
         const todos = [];
         const getTodos = async() => {
             const result = await axios.get('https://basic-todo-cd42e.firebaseio.com/todos.json')
-            console.log(result);
+            // console.log(result);
+            // console.log('prior side effect?')
             const todoData = result.data;
 
             for (const key in todoData) {
-                todos.push({ id: key, name: key.name })
+                todos.push({ id: key, name: todoData[key].name })
             };
+            setTodoList(todos);
         };
         getTodos();
-        setTodoList(todos);
 
         // CLEANUP - this function ll be executed by react on every render cycle
         // and react ll eventually execute this as a cleanup 
@@ -28,10 +32,32 @@ const Todo = () => {
         return () => {
             console.log('Cleanup');
         }
-    }, [ ]); // [ todoName ] runs only when the todoName state changes
+    }, []); // this useEffect runs only once, on mounting this component
+    // because of the empty array passed as a second arg
+    // [ todoName ] runs only when the todoName state changes
+
+
+    // this function will handle updating the todoList state after getting a response from the post req sent to the db
+    // because the useEffect that handles getting data from the db executes once upon mounting
+    // there might be an issue updating the state whenever we get mulitple response from the db at almost the same time
+    // so we are using the function to get the response and update the todoList state accordingly
+    // because the function where we add a todo is a closure
+    useEffect(() => {
+        if (submittedTodo) { // if the state is not null or empty
+            console.log('Submitted todo ', submittedTodo )
+            setTodoList(todoList.concat(submittedTodo));
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ submittedTodo ]);
+    // // Error notification 
+    // there was an error that imposed I included toddList state in the array
+    // this will cause an infinte loop
+    // because anytime the todoList state changes as a result of the useEffect to update it's state 
+    // the useEffect function runs again, which continously update the todoList state
+    // and keeps on executing the useEffect function
 
     const mouseMoveHandler = event => {
-        console.log(event.clientX, event.clientY);
+        // console.log(event.clientX, event.clientY);
     };
 
     useEffect(() => {
@@ -42,25 +68,48 @@ const Todo = () => {
         };
     }, []);
 
+
     // function to execute the function useState gives
     const inputChangeHandler = (event) => {
         // function that updates our state with a new value
        setTodoName(event.target.value);
     };
 
+    // the todoList state is remains same when trying to concat two new req at almost the same time
+    // what we do is to use another state to update the todo
     const todoAddHandler = async () => {
         // take the previous value in the state into account
         // concat always returns a new array and doesnt edit the old one
-        setTodoList(todoList.concat(todoName));
 
         // saving to database after adding each todoName to the todoList
         try {
             const result = await axios.post('https://basic-todo-cd42e.firebaseio.com/todos.json', { name: todoName });
-            console.log(result);
+            // console.log(result);
+            setTimeout(() => {
+                const todoItem = {id: result.data.name, name: todoName }
+                setSubmittedTodo(todoItem);
+            }, 3000);
         } catch (err) {
             console.log(err);
         };
     };
+
+    // DELETE TODO
+    const todoListReducer = (state, action) => {
+        switch(action.type) { // describes what to do
+            case 'ADD': 
+                return state.concat(action.payload); // payload here is the todo object
+            case 'REMOVE':
+                return state.filter((todo) => todo.id !== action.payload); // payload here is the id of todo object we are getting from the action
+            default:
+                return state;
+        };
+    };
+
+    // registering the above reducer 
+    // we get back an array with exactly two elements and we use destructuring for this
+    // we get back our state and dispatch function
+    const [todoList, dispatch ] = useReducer(todoListReducer, [])
 
     return (
         <>
@@ -138,3 +187,22 @@ export default Todo;
 
 
 
+// anyttome a state changes react re-renders
+
+
+// useReducer - helps to get rid of items
+// delete a todo
+// const deleteTodoHandler = async (todoId) => {
+//     const response = await axios.delete(`https://basic-todo-cd42e.firebaseio.com/todos/${todoId}.json`);
+//     console.log(response, ' delete response');
+//     let todos = todoList.filter(todo => todo.id !== todoId);
+//     setTodoList(todos);
+// };
+// the above method can be used but we are taking a look at how we can use useReducer hook
+// useReducer allows us to bundle the logic for updating the state in one simple function
+// It receives two argument the state and the action which react will pass automatically for us
+// the action will be an object with information on what to do and 
+// the state will be our latest/current state which we want to edit based on the action
+// useReducer can be an powerful alternative to the useState hook for handling a state
+// becos it allows us to encode all possible actions to be carried out on the state
+// instead of having to write them as normal functions in this functional component
