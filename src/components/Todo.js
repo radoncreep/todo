@@ -1,13 +1,33 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import axios from 'axios';
-import { bindActionCreators } from 'redux';
+// import { bindActionCreators } from 'redux';
 // import userEvent from '@testing-library/user-event';
 const Todo = () => {
     // single state
     // todoState is an object containing a string and array property
     const [todoName, setTodoName] = useState('');
     const [submittedTodo, setSubmittedTodo] = useState(null);
-    const [todoList, setTodoList] = useState([]);
+    // const [todoList, setTodoList] = useState([]);
+
+    // useReducer()
+    const todoListReducer = (state, action) => {
+        switch(action.type) { // describes what to do
+            case 'ADD': 
+                // conctenating a single state to our current state and returning the new state which concat() returns 
+                return state.concat(action.payload); // payload here is the full todo object
+            case 'SET':
+                return action.payload; // array of new items returned as new state
+            case 'REMOVE':
+                return state.filter((todo) => todo.id !== action.payload); // payload here is the id of todo object we are getting from the action
+            default:
+                return state;
+        };
+    };
+
+    // registering the above reducer 
+    // we get back an array with exactly two elements and we use destructuring for this
+    // we get back our state and dispatch function
+    const [todoList, dispatch ] = useReducer(todoListReducer, []); // after this line we can start dispatching actions
 
     useEffect(() => {
         const todos = [];
@@ -20,7 +40,7 @@ const Todo = () => {
             for (const key in todoData) {
                 todos.push({ id: key, name: todoData[key].name })
             };
-            setTodoList(todos);
+            dispatch({ type: 'SET', payload: todos }); // the popluated todos array we are getting from the db is assigned as the payload
         };
         getTodos();
 
@@ -45,7 +65,9 @@ const Todo = () => {
     useEffect(() => {
         if (submittedTodo) { // if the state is not null or empty
             console.log('Submitted todo ', submittedTodo )
-            setTodoList(todoList.concat(submittedTodo));
+            // here we are adding a single item to the state so we can use the ADD case in our reducer function
+            // setTodoList(todoList.concat(submittedTodo));
+            dispatch({ type: 'ADD', payload: submittedTodo });
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ submittedTodo ]);
@@ -95,21 +117,11 @@ const Todo = () => {
     };
 
     // DELETE TODO
-    const todoListReducer = (state, action) => {
-        switch(action.type) { // describes what to do
-            case 'ADD': 
-                return state.concat(action.payload); // payload here is the todo object
-            case 'REMOVE':
-                return state.filter((todo) => todo.id !== action.payload); // payload here is the id of todo object we are getting from the action
-            default:
-                return state;
-        };
+    const deleteTodoHandler = async (todoId) => {
+        const response = await axios.delete(`https://basic-todo-cd42e.firebaseio.com/todos/${todoId}.json`);
+        console.log(response);
+        dispatch({ type: 'REMOVE',  payload: todoId });
     };
-
-    // registering the above reducer 
-    // we get back an array with exactly two elements and we use destructuring for this
-    // we get back our state and dispatch function
-    const [todoList, dispatch ] = useReducer(todoListReducer, [])
 
     return (
         <>
@@ -125,7 +137,8 @@ const Todo = () => {
             >Add</button>
           <ul>
             {todoList.map(todo => (
-                <li key={todo.id}>{todo.name}</li>
+                // you could use onClick={() => deleteTodoHandler(todo.id)}
+                <li onClick={deleteTodoHandler.bind(this, todo.id)} key={todo.id}>{todo.name}</li>
             ))}
           </ul>
         </>
@@ -205,4 +218,15 @@ export default Todo;
 // the state will be our latest/current state which we want to edit based on the action
 // useReducer can be an powerful alternative to the useState hook for handling a state
 // becos it allows us to encode all possible actions to be carried out on the state
-// instead of having to write them as normal functions in this functional component
+// instead of having to write them as normal functions in this functional component4
+
+// we wont be needing the submittedTodo anymore becos
+// whenever we dispatch a function we get the lastest state which is automated by react
+// and taking advantage of that we can manipulate our state knowing it is updated
+// so no matter how fast a req is being sent back to update the state
+// we work with our always updated and latest state to update our UI accordingly
+// for every run of the reducer function we get the latest state snapshot
+// and not the snapshot at the point of time we start a logic
+
+
+// useRef
