@@ -4,6 +4,7 @@ import axios from 'axios';
 // import userEvent from '@testing-library/user-event';
 
 import List from './List';
+import { useFormInputHook } from '../hooks/forms';
 
 const Todo = () => {
     // single state
@@ -13,7 +14,12 @@ const Todo = () => {
     // const [todoList, setTodoList] = useState([]);
     const todoInputRef = useRef(null); // the connection is established between the input and the constant
     // or a reference to the input is stored in this constant
-    const [inputIsValid, setInputIsValid] = useState(false)
+    const [inputIsValid, setInputIsValid] = useState(false);
+
+    // custom hook 
+    const todoInput = useFormInputHook(); // use this way
+    // or destructure it like below
+    // const { value, onChange, validity } = useFormInputHook();
 
     // useReducer()
     const todoListReducer = (state, action) => {
@@ -121,8 +127,9 @@ const Todo = () => {
         // concat always returns a new array and doesnt edit the old one
 
         // now that we have useRef
-        console.log(todoInputRef, ' ref');
-        const todoName = todoInputRef.current.value;
+        // console.log(todoInputRef, ' ref');
+        // const todoName = todoInputRef.current.value;
+        const todoName = todoInput.value;
 
         // saving to database after adding each todoName to the todoList
         try {
@@ -152,9 +159,11 @@ const Todo = () => {
             placeholder="Todo"
             // onChange={inputChangeHandler}
             // value={todoName}
-            ref={todoInputRef}
-            onChange={inputValidationHandler}
-            style={{ backgroundColor: inputIsValid ?  'transparent' : 'red' }}
+            // ref={todoInputRef}
+            // onChange={inputValidationHandler}
+            onChange={todoInput.onChange}
+            value={todoInput.value}
+            style={{ backgroundColor: todoInput.validity ?  'transparent' : 'red' }}
             /> 
           <button 
             type="button"
